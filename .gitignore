@@ -1,7 +1,7 @@
 /.venv/
 /dist/
 /build/
-/*.egg-info/
+*.egg-info/
 /.pytest_cache/
 /.mypy_cache/
 /.ruff_cache/
@@ -9,4 +9,3 @@
 /.coverage
 __pycache__/
 *.py[cod]
-
