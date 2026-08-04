@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from .errors import CallbackVerificationError, InvoiceNotPaidError
-from .types import InvoiceInfo, VerifyInvoicePaidCallbackData
+from .types import InvoiceInfo, InvoiceWebhookPayload, VerifyInvoicePaidCallbackData
 
 _DECIMAL_PATTERN = re.compile(r"^-?\d+(?:\.\d+)?$")
 
@@ -58,21 +58,41 @@ def normalize_decimal_string(value: Any) -> str:
 
 
 def resolve_callback_arguments(
-    invoice_id_or_callback: str | VerifyInvoicePaidCallbackData,
+    invoice_id_or_callback: str | VerifyInvoicePaidCallbackData | InvoiceWebhookPayload,
     callback_data: VerifyInvoicePaidCallbackData | None,
 ) -> tuple[str, VerifyInvoicePaidCallbackData]:
     if isinstance(invoice_id_or_callback, str):
         invoice_id = invoice_id_or_callback.strip()
         callback = callback_data
     else:
-        invoice_id = str(invoice_id_or_callback.get("id", "")).strip()
-        callback = invoice_id_or_callback
+        invoice_id = resolve_webhook_invoice_id(invoice_id_or_callback)
+        event_data = invoice_id_or_callback.get("data")
+        callback = cast(
+            VerifyInvoicePaidCallbackData,
+            event_data if isinstance(event_data, Mapping) else invoice_id_or_callback,
+        )
 
     if not invoice_id:
         raise ValueError("invoice id is required")
     if callback is None:
         raise ValueError("callback data is required")
     return invoice_id, callback
+
+
+def resolve_webhook_invoice_id(
+    callback: VerifyInvoicePaidCallbackData | InvoiceWebhookPayload,
+) -> str:
+    event_data = callback.get("data")
+    if isinstance(event_data, Mapping):
+        invoice_id = str(event_data.get("invoice_id", "")).strip()
+        if invoice_id:
+            return invoice_id
+
+    invoice_id = str(callback.get("invoice_id", "")).strip()
+    if invoice_id:
+        return invoice_id
+
+    return str(callback.get("id", "")).strip()
 
 
 def verify_callback_against_invoice(
@@ -99,4 +119,3 @@ def verify_callback_against_invoice(
         )
 
     return invoice
-

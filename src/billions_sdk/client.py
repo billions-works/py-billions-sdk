@@ -15,6 +15,7 @@ from ._shared import (
     normalize_base_url,
     normalize_version,
     resolve_callback_arguments,
+    resolve_webhook_invoice_id,
     verify_callback_against_invoice,
 )
 from .constants import BILLIONS_DEFAULT_BASE_URL, BILLIONS_PUBLIC_API_VERSION
@@ -25,6 +26,7 @@ from .types import (
     EstimateInvoiceFeesRequest,
     EstimateInvoiceFeesResponseWithSummary,
     InvoiceInfo,
+    InvoiceWebhookPayload,
     MerchantInfo,
     VerifyInvoicePaidCallbackData,
 )
@@ -113,7 +115,7 @@ class BillionsApi:
 
     def verify_invoice_paid(
         self,
-        invoice_id_or_callback: str | VerifyInvoicePaidCallbackData,
+        invoice_id_or_callback: str | VerifyInvoicePaidCallbackData | InvoiceWebhookPayload,
         callback_data: VerifyInvoicePaidCallbackData | None = None,
     ) -> InvoiceInfo:
         invoice_id, callback = resolve_callback_arguments(
@@ -122,6 +124,16 @@ class BillionsApi:
         )
         invoice = self.get_invoice(invoice_id)
         return verify_callback_against_invoice(invoice, callback)
+
+    def get_invoice_from_webhook(
+        self,
+        webhook: InvoiceWebhookPayload | VerifyInvoicePaidCallbackData,
+    ) -> InvoiceInfo:
+        """Retrieve authoritative invoice state for any webhook status."""
+        invoice_id = resolve_webhook_invoice_id(webhook)
+        if not invoice_id:
+            raise ValueError("invoice id is required")
+        return self.get_invoice(invoice_id)
 
     @property
     def _api_base_url(self) -> str:

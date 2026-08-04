@@ -55,6 +55,7 @@ api.estimate_fees(payload)
 api.create_invoice(payload)
 api.get_invoice(invoice_id)
 api.get_invoices_by_order_no(order_no)
+api.get_invoice_from_webhook(webhook)
 api.verify_invoice_paid(invoice_id, callback_data)
 api.verify_invoice_paid(callback_data_with_id)
 ```
@@ -72,30 +73,45 @@ same key returns the invoice associated with that key. Use `order_no` as your bu
 order reference, then call `get_invoices_by_order_no()` when you need to recover all
 invoices for that order.
 
-## Callback verification
+## Webhooks and callback verification
+
+Billions sends `invoice.status_changed` for intermediate transitions and
+`invoice.paid` when an invoice becomes `completed`. Use the canonical `data`
+object in the webhook envelope.
+
+Retrieve authoritative state for any webhook status:
+
+```python
+invoice = api.get_invoice_from_webhook(webhook)
+
+if invoice["status"] == "processing":
+    # Update the visible payment status, but do not fulfill the order.
+    ...
+```
+
+For a paid event, you can additionally compare the webhook fields with the API
+response:
 
 ```python
 from billions_sdk import CallbackVerificationError, InvoiceNotPaidError
 
 try:
     invoice = api.verify_invoice_paid(
-        {
-            "id": callback["id"],
-            "status": callback["status"],
-            "paid_amount": callback["paid_amount"],
-        }
+        webhook
     )
 except (InvoiceNotPaidError, CallbackVerificationError):
     # Reject or postpone callback processing.
     ...
 ```
 
-`verify_invoice_paid()` retrieves the authoritative invoice from the API, requires
-its status to be `completed`, and compares the callback status and paid amount.
+`verify_invoice_paid()` accepts the current webhook envelope and legacy callback
+objects. It retrieves the authoritative invoice from the API, requires its status
+to be `completed`, and compares the callback status and paid amount.
 Decimal forms such as `100`, `100.0`, and `100.000000000000000000` are equivalent.
 
-If the callback should be used only as a wake-up signal, call `get_invoice()` and
-base your application state exclusively on that response.
+If the callback should be used only as a wake-up signal, call
+`get_invoice_from_webhook()` and base your application state exclusively on that
+response.
 
 ## Errors
 
@@ -115,4 +131,3 @@ mypy
 pytest
 python -m build
 ```
-

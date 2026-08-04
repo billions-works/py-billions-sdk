@@ -211,6 +211,82 @@ def test_verify_invoice_paid_accepts_equivalent_decimal_formats() -> None:
     assert result == expected_invoice
 
 
+def test_verify_invoice_paid_accepts_new_webhook_envelope() -> None:
+    expected_invoice = invoice()
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json=expected_invoice)
+    )
+    api, client = sync_api(transport)
+    try:
+        result = api.verify_invoice_paid(
+            {
+                "event": "invoice.paid",
+                "event_timestamp": "2026-08-04T09:42:08.189Z",
+                "attempt": 1,
+                "previous_attempt_timestamp": None,
+                "data": {
+                    "invoice_id": "invoice-id",
+                    "external_invoice_id": "12",
+                    "order_no": "ORDER-42",
+                    "previous_status": "processing",
+                    "status": "completed",
+                    "amount": "100.000000000000000000",
+                    "final_amount": "101.000000000000000000",
+                    "paid_amount": "0101.000",
+                    "merchant_fee": "1.000000000000000000",
+                    "merchant_receive_amount": "99.000000000000000000",
+                    "currency": "USD",
+                    "settlement_currency": "USD",
+                    "payment_source": "internal",
+                    "payment_address": None,
+                    "updated_at": "2026-08-04T09:42:08.000Z",
+                },
+            }
+        )
+    finally:
+        client.close()
+
+    assert result == expected_invoice
+
+
+def test_get_invoice_from_webhook_supports_intermediate_status() -> None:
+    expected_invoice = invoice(status="processing", paid_amount="0")
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json=expected_invoice)
+    )
+    api, client = sync_api(transport)
+    try:
+        result = api.get_invoice_from_webhook(
+            {
+                "event": "invoice.status_changed",
+                "event_timestamp": "2026-08-04T09:42:08.189Z",
+                "attempt": 1,
+                "previous_attempt_timestamp": None,
+                "data": {
+                    "invoice_id": "invoice-id",
+                    "external_invoice_id": "12",
+                    "order_no": "ORDER-42",
+                    "previous_status": "pending",
+                    "status": "processing",
+                    "amount": "100.000000000000000000",
+                    "final_amount": "101.000000000000000000",
+                    "paid_amount": "0",
+                    "merchant_fee": "1.000000000000000000",
+                    "merchant_receive_amount": "99.000000000000000000",
+                    "currency": "USD",
+                    "settlement_currency": "USD",
+                    "payment_source": "internal",
+                    "payment_address": None,
+                    "updated_at": "2026-08-04T09:42:08.000Z",
+                },
+            }
+        )
+    finally:
+        client.close()
+
+    assert result["status"] == "processing"
+
+
 def test_verify_invoice_paid_rejects_unpaid_invoice() -> None:
     transport = httpx.MockTransport(
         lambda request: httpx.Response(200, json=invoice(status="pending"))
@@ -267,4 +343,3 @@ async def test_async_client_matches_sync_api() -> None:
         await http_client.aclose()
 
     assert len(requests) == 2
-

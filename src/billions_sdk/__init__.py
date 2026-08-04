@@ -20,6 +20,9 @@ from .types import (
     InvoiceInfo,
     InvoiceStatus,
     InvoiceType,
+    InvoiceWebhookData,
+    InvoiceWebhookEvent,
+    InvoiceWebhookPayload,
     MerchantInfo,
     VerifyInvoicePaidCallbackData,
 )
@@ -43,9 +46,11 @@ __all__ = [
     "InvoiceNotPaidError",
     "InvoiceStatus",
     "InvoiceType",
+    "InvoiceWebhookData",
+    "InvoiceWebhookEvent",
+    "InvoiceWebhookPayload",
     "MerchantInfo",
     "VerifyInvoicePaidCallbackData",
 ]
 
-__version__ = "0.1.0"
-
+__version__ = "0.2.0"
