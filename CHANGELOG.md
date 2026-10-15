@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1
+
+- Aligned webhook verification with the backend's RFC 8785 JCS signature contract.
+
 ## 0.4.0
 
 - Added optional webhook secrets to synchronous and asynchronous clients.

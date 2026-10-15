@@ -76,12 +76,13 @@ def test_api_key_is_required() -> None:
 
 
 def test_verify_webhook_signature() -> None:
-    body = b'{"event":"invoice.paid"}'
-    signature = hmac.new(b"whsec_test", body, hashlib.sha256).hexdigest()
-    api = BillionsApi("secret", webhook_secret="whsec_test")
+    body = '{"status":"completed","message":"Заказ\\/1"}'
+    signature = "f5aaad7e7c75acd4dd679d9a58f708d37fb061bfa7bfd2f12117992715153e92"
+    secret = "0123456789abcdef" * 4
+    api = BillionsApi("secret", webhook_secret=secret)
     try:
         assert api.verify_webhook_signature(signature, body)
-        assert api.verify_webhook_signature(f"sha256={signature.upper()}", body)
+        assert api.verify_webhook_signature(f"jcs-sha256={signature.upper()}", body)
         assert not api.verify_webhook_signature("0" * 64, body)
         assert not api.verify_webhook_signature("invalid", body)
     finally:

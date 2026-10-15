@@ -82,16 +82,18 @@ Billions sends `invoice.status_changed` for intermediate transitions and
 `invoice.paid` when an invoice becomes `completed`. Use the canonical `data`
 object in the webhook envelope.
 
-Verify the signature before parsing JSON:
+Verify the signature using the received JSON body:
 
 ```python
 if not api.verify_webhook_signature(signature_header, raw_body):
     raise ValueError("Invalid webhook signature")
 ```
 
-The method verifies HMAC-SHA256 over the exact raw body using `webhook_secret`.
-It accepts a plain 64-character hex signature or `sha256=<hex>` and performs a
-timing-safe comparison. Re-encoding parsed JSON can change the signed bytes.
+The method parses the body, canonicalizes it according to RFC 8785 (JCS), and
+verifies HMAC-SHA256 using `webhook_secret`. It accepts plain hex or
+`jcs-sha256=<hex>` and performs a timing-safe comparison. JSON whitespace,
+property order, and equivalent escaping do not affect verification. The secret
+is the original API `secretKey`, used as UTF-8 text.
 
 Retrieve authoritative state for any webhook status:
 

@@ -9,6 +9,8 @@ from collections.abc import Mapping
 from hashlib import sha256
 from typing import Any, cast
 
+import rfc8785
+
 from .errors import CallbackVerificationError, InvoiceNotPaidError
 from .types import InvoiceInfo, InvoiceWebhookPayload, VerifyInvoicePaidCallbackData
 
@@ -33,8 +35,8 @@ def verify_webhook_signature(
         raise ValueError("webhook_secret is required to verify webhook signatures")
 
     normalized_signature = str(signature).strip()
-    if normalized_signature.lower().startswith("sha256="):
-        normalized_signature = normalized_signature[7:]
+    if normalized_signature.lower().startswith("jcs-sha256="):
+        normalized_signature = normalized_signature[11:]
     if len(normalized_signature) != 64:
         return False
     try:
@@ -42,8 +44,12 @@ def verify_webhook_signature(
     except ValueError:
         return False
 
-    body_bytes = body.encode("utf-8") if isinstance(body, str) else body
-    expected_signature = hmac.new(secret.encode("utf-8"), body_bytes, sha256).hexdigest()
+    try:
+        parsed_body = json.loads(body)
+        canonical_body = rfc8785.dumps(parsed_body)
+    except (json.JSONDecodeError, rfc8785.CanonicalizationError, UnicodeDecodeError):
+        return False
+    expected_signature = hmac.new(secret.encode("utf-8"), canonical_body, sha256).hexdigest()
     return hmac.compare_digest(expected_signature, normalized_signature.lower())
 
 
