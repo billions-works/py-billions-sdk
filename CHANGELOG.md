@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- Added optional webhook secrets to synchronous and asynchronous clients.
+- Added timing-safe HMAC-SHA256 webhook signature verification.
+
 ## 0.3.0
 
 - Added the public country directory to synchronous and asynchronous clients.

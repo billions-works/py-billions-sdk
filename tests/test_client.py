@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 from typing import Any
 
@@ -71,6 +73,28 @@ def test_constructor_normalizes_options() -> None:
 def test_api_key_is_required() -> None:
     with pytest.raises(ValueError, match="api_key is required"):
         BillionsApi(" ")
+
+
+def test_verify_webhook_signature() -> None:
+    body = b'{"event":"invoice.paid"}'
+    signature = hmac.new(b"whsec_test", body, hashlib.sha256).hexdigest()
+    api = BillionsApi("secret", webhook_secret="whsec_test")
+    try:
+        assert api.verify_webhook_signature(signature, body)
+        assert api.verify_webhook_signature(f"sha256={signature.upper()}", body)
+        assert not api.verify_webhook_signature("0" * 64, body)
+        assert not api.verify_webhook_signature("invalid", body)
+    finally:
+        api.close()
+
+
+def test_verify_webhook_signature_requires_secret() -> None:
+    api = BillionsApi("secret")
+    try:
+        with pytest.raises(ValueError, match="webhook_secret is required"):
+            api.verify_webhook_signature("0" * 64, b"{}")
+    finally:
+        api.close()
 
 
 def test_get_version_uses_expected_url_and_headers() -> None:
@@ -356,9 +380,13 @@ async def test_async_client_matches_sync_api() -> None:
     api = AsyncBillionsApi(
         "secret",
         base_url="https://example.test",
+        webhook_secret="whsec_test",
         client=http_client,
     )
     try:
+        body = b'{"event":"invoice.paid"}'
+        signature = hmac.new(b"whsec_test", body, hashlib.sha256).hexdigest()
+        assert api.verify_webhook_signature(signature, body)
         assert await api.get_version() == "v1"
         assert await api.get_countries() == [{"code": "US", "name": "United States"}]
         assert await api.get_invoices_by_order_no("ORDER-42") == [invoice()]

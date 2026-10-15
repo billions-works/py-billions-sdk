@@ -18,7 +18,7 @@ pip install py-billions-sdk
 ```python
 from billions_sdk import BillionsApi
 
-with BillionsApi("your-api-key") as api:
+with BillionsApi("your-api-key", webhook_secret="your-webhook-secret") as api:
     version = api.get_version()
     currencies = api.get_currencies()
     countries = api.get_countries()
@@ -58,6 +58,7 @@ api.create_invoice(payload)
 api.get_invoice(invoice_id)
 api.get_invoices_by_order_no(order_no)
 api.get_invoice_from_webhook(webhook)
+api.verify_webhook_signature(signature, raw_body)
 api.verify_invoice_paid(invoice_id, callback_data)
 api.verify_invoice_paid(callback_data_with_id)
 ```
@@ -80,6 +81,17 @@ invoices for that order.
 Billions sends `invoice.status_changed` for intermediate transitions and
 `invoice.paid` when an invoice becomes `completed`. Use the canonical `data`
 object in the webhook envelope.
+
+Verify the signature before parsing JSON:
+
+```python
+if not api.verify_webhook_signature(signature_header, raw_body):
+    raise ValueError("Invalid webhook signature")
+```
+
+The method verifies HMAC-SHA256 over the exact raw body using `webhook_secret`.
+It accepts a plain 64-character hex signature or `sha256=<hex>` and performs a
+timing-safe comparison. Re-encoding parsed JSON can change the signed bytes.
 
 Retrieve authoritative state for any webhook status:
 

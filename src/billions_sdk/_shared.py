@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import re
 from collections.abc import Mapping
+from hashlib import sha256
 from typing import Any, cast
 
 from .errors import CallbackVerificationError, InvoiceNotPaidError
@@ -20,6 +22,29 @@ def normalize_base_url(value: str | None, default: str) -> str:
 
 def normalize_version(value: str | None, default: str) -> str:
     return (value or default).strip() or default
+
+
+def verify_webhook_signature(
+    secret: str | None,
+    signature: str,
+    body: str | bytes,
+) -> bool:
+    if secret is None:
+        raise ValueError("webhook_secret is required to verify webhook signatures")
+
+    normalized_signature = str(signature).strip()
+    if normalized_signature.lower().startswith("sha256="):
+        normalized_signature = normalized_signature[7:]
+    if len(normalized_signature) != 64:
+        return False
+    try:
+        bytes.fromhex(normalized_signature)
+    except ValueError:
+        return False
+
+    body_bytes = body.encode("utf-8") if isinstance(body, str) else body
+    expected_signature = hmac.new(secret.encode("utf-8"), body_bytes, sha256).hexdigest()
+    return hmac.compare_digest(expected_signature, normalized_signature.lower())
 
 
 def decode_response_body(value: str) -> Any:

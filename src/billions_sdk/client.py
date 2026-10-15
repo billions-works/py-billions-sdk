@@ -17,6 +17,7 @@ from ._shared import (
     resolve_callback_arguments,
     resolve_webhook_invoice_id,
     verify_callback_against_invoice,
+    verify_webhook_signature,
 )
 from .constants import BILLIONS_DEFAULT_BASE_URL, BILLIONS_PUBLIC_API_VERSION
 from .errors import BillionsApiError
@@ -42,16 +43,20 @@ class BillionsApi:
         *,
         base_url: str | None = None,
         version: str | None = None,
+        webhook_secret: str | None = None,
         client: httpx.Client | None = None,
         timeout: float = 20.0,
     ) -> None:
         normalized_api_key = str(api_key).strip()
         if not normalized_api_key:
             raise ValueError("api_key is required")
+        if webhook_secret == "":
+            raise ValueError("webhook_secret must not be empty")
 
         self.api_key = normalized_api_key
         self.base_url = normalize_base_url(base_url, BILLIONS_DEFAULT_BASE_URL)
         self.version = normalize_version(version, BILLIONS_PUBLIC_API_VERSION)
+        self.webhook_secret = webhook_secret
         self._owns_client = client is None
         self._client = client or httpx.Client(timeout=timeout)
 
@@ -138,6 +143,10 @@ class BillionsApi:
         if not invoice_id:
             raise ValueError("invoice id is required")
         return self.get_invoice(invoice_id)
+
+    def verify_webhook_signature(self, signature: str, body: str | bytes) -> bool:
+        """Verify an HMAC-SHA256 signature against the exact raw request body."""
+        return verify_webhook_signature(self.webhook_secret, signature, body)
 
     @property
     def _api_base_url(self) -> str:
