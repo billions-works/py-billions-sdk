@@ -13,7 +13,7 @@ from billions_sdk import (
     CallbackVerificationError,
     InvoiceNotPaidError,
 )
-from billions_sdk.types import InvoiceInfo
+from billions_sdk.types import CreateInvoiceRequest, InvoiceInfo
 
 
 def invoice(**overrides: Any) -> InvoiceInfo:
@@ -32,6 +32,7 @@ def invoice(**overrides: Any) -> InvoiceInfo:
         "amount": "100.000000000000000000",
         "final_amount": "101.000000000000000000",
         "merchant_fee": "1.000000000000000000",
+        "network_and_other_fees": "0.250000000000000000",
         "merchant_receive_amount": "99.000000000000000000",
         "paid_amount": "101.000000000000000000",
         "callback_url": "https://example.com/webhook",
@@ -101,7 +102,7 @@ def test_create_invoice_sends_current_wire_fields() -> None:
         return httpx.Response(200, json=expected_invoice)
 
     api, client = sync_api(httpx.MockTransport(handler))
-    payload = {
+    payload: CreateInvoiceRequest = {
         "currency": "USD",
         "amount": "100.00",
         "idempotencyKey": "attempt-42",
@@ -116,6 +117,23 @@ def test_create_invoice_sends_current_wire_fields() -> None:
     assert requests[0].method == "POST"
     assert str(requests[0].url) == "https://example.test/public/v1/invoices/create"
     assert json.loads(requests[0].content) == payload
+
+
+def test_get_countries_uses_expected_endpoint() -> None:
+    requests: list[httpx.Request] = []
+    countries = [{"code": "US", "name": "United States"}]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json=countries)
+
+    api, client = sync_api(httpx.MockTransport(handler))
+    try:
+        assert api.get_countries() == countries
+    finally:
+        client.close()
+
+    assert str(requests[0].url) == "https://example.test/public/v1/countries"
 
 
 def test_get_invoice_and_order_lookup_encode_path_values() -> None:
@@ -234,6 +252,7 @@ def test_verify_invoice_paid_accepts_new_webhook_envelope() -> None:
                     "final_amount": "101.000000000000000000",
                     "paid_amount": "0101.000",
                     "merchant_fee": "1.000000000000000000",
+                    "network_and_other_fees": "0.250000000000000000",
                     "merchant_receive_amount": "99.000000000000000000",
                     "currency": "USD",
                     "settlement_currency": "USD",
@@ -272,6 +291,7 @@ def test_get_invoice_from_webhook_supports_intermediate_status() -> None:
                     "final_amount": "101.000000000000000000",
                     "paid_amount": "0",
                     "merchant_fee": "1.000000000000000000",
+                    "network_and_other_fees": "0.250000000000000000",
                     "merchant_receive_amount": "99.000000000000000000",
                     "currency": "USD",
                     "settlement_currency": "USD",
@@ -328,6 +348,8 @@ async def test_async_client_matches_sync_api() -> None:
         requests.append(request)
         if request.url.path.endswith("/version"):
             return httpx.Response(200, json="v1")
+        if request.url.path.endswith("/countries"):
+            return httpx.Response(200, json=[{"code": "US", "name": "United States"}])
         return httpx.Response(200, json=[invoice()])
 
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -338,8 +360,9 @@ async def test_async_client_matches_sync_api() -> None:
     )
     try:
         assert await api.get_version() == "v1"
+        assert await api.get_countries() == [{"code": "US", "name": "United States"}]
         assert await api.get_invoices_by_order_no("ORDER-42") == [invoice()]
     finally:
         await http_client.aclose()
 
-    assert len(requests) == 2
+    assert len(requests) == 3

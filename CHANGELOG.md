@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Added the public country directory to synchronous and asynchronous clients.
+- Added `network_and_other_fees` to invoice and webhook types.
+
 ## 0.2.0
 
 - Typed outgoing webhook envelope and invoice event data.

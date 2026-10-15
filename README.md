@@ -21,6 +21,7 @@ from billions_sdk import BillionsApi
 with BillionsApi("your-api-key") as api:
     version = api.get_version()
     currencies = api.get_currencies()
+    countries = api.get_countries()
     invoice = api.create_invoice(
         {
             "currency": "USD",
@@ -50,6 +51,7 @@ Both clients expose the same methods:
 ```python
 api.get_version()
 api.get_currencies()
+api.get_countries()
 api.get_merchant_info()
 api.estimate_fees(payload)
 api.create_invoice(payload)

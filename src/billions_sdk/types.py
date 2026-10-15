@@ -32,6 +32,11 @@ class CurrencyInfo(TypedDict):
     internalTicker: str
 
 
+class CountryInfo(TypedDict):
+    code: str
+    name: str
+
+
 class MerchantInfo(TypedDict):
     id: str
     email: str
@@ -86,6 +91,7 @@ class InvoiceInfo(TypedDict):
     amount: str
     final_amount: str
     merchant_fee: str
+    network_and_other_fees: str
     merchant_receive_amount: str
     paid_amount: str
     callback_url: str | None
@@ -114,6 +120,7 @@ class InvoiceWebhookData(TypedDict):
     final_amount: str
     paid_amount: str
     merchant_fee: str
+    network_and_other_fees: str
     merchant_receive_amount: str
     currency: str | None
     settlement_currency: str | None
@@ -146,6 +153,7 @@ class InvoiceWebhookPayload(_InvoiceWebhookPayloadRequired, total=False):
     final_amount: str
     paid_amount: str
     merchant_fee: str
+    network_and_other_fees: str
     merchant_receive_amount: str
     currency: str | None
     settlement_currency: str | None

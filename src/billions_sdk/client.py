@@ -21,6 +21,7 @@ from ._shared import (
 from .constants import BILLIONS_DEFAULT_BASE_URL, BILLIONS_PUBLIC_API_VERSION
 from .errors import BillionsApiError
 from .types import (
+    CountryInfo,
     CreateInvoiceRequest,
     CurrencyInfo,
     EstimateInvoiceFeesRequest,
@@ -75,6 +76,9 @@ class BillionsApi:
 
     def get_currencies(self) -> list[CurrencyInfo]:
         return cast(list[CurrencyInfo], self._request("GET", "/currencies"))
+
+    def get_countries(self) -> list[CountryInfo]:
+        return cast(list[CountryInfo], self._request("GET", "/countries"))
 
     def get_merchant_info(self) -> MerchantInfo:
         return cast(MerchantInfo, self._request("GET", "/me"))

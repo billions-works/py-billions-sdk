@@ -11,6 +11,7 @@ from .errors import (
 )
 from .types import (
     Amount,
+    CountryInfo,
     CreateInvoiceRequest,
     CurrencyInfo,
     CurrencyType,
@@ -36,6 +37,7 @@ __all__ = [
     "BillionsApiError",
     "BillionsSdkError",
     "CallbackVerificationError",
+    "CountryInfo",
     "CreateInvoiceRequest",
     "CurrencyInfo",
     "CurrencyType",
@@ -53,4 +55,4 @@ __all__ = [
     "VerifyInvoicePaidCallbackData",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
