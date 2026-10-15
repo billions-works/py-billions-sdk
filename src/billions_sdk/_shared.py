@@ -5,6 +5,8 @@ from __future__ import annotations
 import hmac
 import json
 import re
+import time
+import uuid
 from collections.abc import Mapping
 from hashlib import sha256
 from typing import Any, cast
@@ -53,6 +55,31 @@ def verify_webhook_signature(
     return hmac.compare_digest(expected_signature, normalized_signature.lower())
 
 
+def signed_mutation_headers(
+    secret: str | None,
+    version: str,
+    path: str,
+    payload: Mapping[str, Any],
+    request_id: str | None,
+    timestamp: int | str | None,
+) -> dict[str, str]:
+    if secret is None:
+        raise ValueError("secret_key is required for signed operations")
+    normalized_timestamp = str(timestamp if timestamp is not None else int(time.time()))
+    normalized_request_id = str(request_id or uuid.uuid4()).strip().lower()
+    canonical_body = rfc8785.dumps(dict(payload)).decode("utf-8")
+    message = (
+        f"POST\n/public/{version}{path}\n{normalized_timestamp}\n"
+        f"{normalized_request_id}\n{canonical_body}"
+    )
+    signature = hmac.new(secret.encode("utf-8"), message.encode("utf-8"), sha256).hexdigest()
+    return {
+        "x-billions-timestamp": normalized_timestamp,
+        "x-billions-request-id": normalized_request_id,
+        "x-billions-request-signature": f"v1={signature}",
+    }
+
+
 def decode_response_body(value: str) -> Any:
     if not value:
         return None
@@ -82,9 +109,7 @@ def normalize_decimal_string(value: Any) -> str:
     integer_part, _, fraction_part = unsigned.partition(".")
     integer_part = integer_part.lstrip("0") or "0"
     fraction_part = fraction_part.rstrip("0")
-    normalized = (
-        f"{integer_part}.{fraction_part}" if fraction_part else integer_part
-    )
+    normalized = f"{integer_part}.{fraction_part}" if fraction_part else integer_part
     return f"-{normalized}" if negative and normalized != "0" else normalized
 
 
@@ -134,9 +159,7 @@ def verify_callback_against_invoice(
         raise InvoiceNotPaidError()
 
     if str(callback.get("status", "")).strip() != str(invoice["status"]).strip():
-        raise CallbackVerificationError(
-            "Callback status does not match API invoice status"
-        )
+        raise CallbackVerificationError("Callback status does not match API invoice status")
 
     callback_amount = callback.get(
         "paid_amount",

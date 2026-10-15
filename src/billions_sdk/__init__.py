@@ -12,7 +12,10 @@ from .errors import (
 from .types import (
     Amount,
     CountryInfo,
+    CreateCryptoRefundRequest,
+    CreateFiatRefundRequest,
     CreateInvoiceRequest,
+    CreateWithdrawalRequest,
     CurrencyInfo,
     CurrencyType,
     EstimateInvoiceFeesRequest,
@@ -25,7 +28,11 @@ from .types import (
     InvoiceWebhookEvent,
     InvoiceWebhookPayload,
     MerchantInfo,
+    RefundRequestInfo,
+    RefundResponse,
     VerifyInvoicePaidCallbackData,
+    WithdrawalRequestInfo,
+    WithdrawalResponse,
 )
 
 __all__ = [
@@ -38,7 +45,10 @@ __all__ = [
     "BillionsSdkError",
     "CallbackVerificationError",
     "CountryInfo",
+    "CreateCryptoRefundRequest",
+    "CreateFiatRefundRequest",
     "CreateInvoiceRequest",
+    "CreateWithdrawalRequest",
     "CurrencyInfo",
     "CurrencyType",
     "EstimateInvoiceFeesRequest",
@@ -52,7 +62,11 @@ __all__ = [
     "InvoiceWebhookEvent",
     "InvoiceWebhookPayload",
     "MerchantInfo",
+    "RefundRequestInfo",
+    "RefundResponse",
     "VerifyInvoicePaidCallbackData",
+    "WithdrawalRequestInfo",
+    "WithdrawalResponse",
 ]
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"

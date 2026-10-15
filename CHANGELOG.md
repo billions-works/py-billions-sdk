@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Added signed withdrawal, crypto refund, and fiat refund operations.
+- Added typed operation payloads and responses with reusable request IDs.
+
 ## 0.4.1
 
 - Aligned webhook verification with the backend's RFC 8785 JCS signature contract.

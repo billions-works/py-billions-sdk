@@ -18,7 +18,7 @@ pip install py-billions-sdk
 ```python
 from billions_sdk import BillionsApi
 
-with BillionsApi("your-api-key", webhook_secret="your-webhook-secret") as api:
+with BillionsApi("your-api-key", secret_key="your-api-secret-key") as api:
     version = api.get_version()
     currencies = api.get_currencies()
     countries = api.get_countries()
@@ -55,6 +55,9 @@ api.get_countries()
 api.get_merchant_info()
 api.estimate_fees(payload)
 api.create_invoice(payload)
+api.create_withdrawal(payload, request_id=request_id)
+api.refund_crypto(payload, request_id=request_id)
+api.refund_fiat(payload, request_id=request_id)
 api.get_invoice(invoice_id)
 api.get_invoices_by_order_no(order_no)
 api.get_invoice_from_webhook(webhook)
@@ -64,6 +67,10 @@ api.verify_invoice_paid(callback_data_with_id)
 ```
 
 Methods on `AsyncBillionsApi` are coroutines and must be awaited.
+
+The withdrawal and refund methods sign the method, route, timestamp, request ID,
+and RFC 8785/JCS body automatically. Preserve and reuse the same request ID and
+body when retrying after a lost response; a new ID can authorize another operation.
 
 The default API host is `https://api.billions.works`, and the default public API
 version is `v1`. Both can be overridden in the constructor. A custom `httpx.Client`

@@ -15,7 +15,7 @@ from billions_sdk import (
     CallbackVerificationError,
     InvoiceNotPaidError,
 )
-from billions_sdk.types import CreateInvoiceRequest, InvoiceInfo
+from billions_sdk.types import CreateInvoiceRequest, CreateWithdrawalRequest, InvoiceInfo
 
 
 def invoice(**overrides: Any) -> InvoiceInfo:
@@ -144,6 +144,37 @@ def test_create_invoice_sends_current_wire_fields() -> None:
     assert json.loads(requests[0].content) == payload
 
 
+def test_create_withdrawal_signs_request() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"request": {"id": "request-id"}})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    api = BillionsApi(
+        "api-key", base_url="https://example.test", secret_key="secret-key", client=client
+    )
+    payload: CreateWithdrawalRequest = {
+        "currency": "EUR",
+        "amount": "70",
+        "withdrawalMethodId": 123,
+    }
+    request_id = "123e4567-e89b-42d3-a456-426614174000"
+    try:
+        api.create_withdrawal(payload, request_id=request_id, timestamp=1_800_000_000)
+    finally:
+        client.close()
+
+    request = requests[0]
+    assert str(request.url) == "https://example.test/public/v1/withdrawals/create"
+    assert request.headers["x-billions-timestamp"] == "1800000000"
+    assert request.headers["x-billions-request-id"] == request_id
+    assert request.headers["x-billions-request-signature"] == (
+        "v1=e4373734cf57c01ee1d98a82245e9f2df9f204c3e52beb3ff3a095427ae936d8"
+    )
+
+
 def test_get_countries_uses_expected_endpoint() -> None:
     requests: list[httpx.Request] = []
     countries = [{"code": "US", "name": "United States"}]
@@ -236,9 +267,7 @@ def test_transport_error_is_wrapped() -> None:
 
 def test_verify_invoice_paid_accepts_equivalent_decimal_formats() -> None:
     expected_invoice = invoice()
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, json=expected_invoice)
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=expected_invoice))
     api, client = sync_api(transport)
     try:
         result = api.verify_invoice_paid(
@@ -256,9 +285,7 @@ def test_verify_invoice_paid_accepts_equivalent_decimal_formats() -> None:
 
 def test_verify_invoice_paid_accepts_new_webhook_envelope() -> None:
     expected_invoice = invoice()
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, json=expected_invoice)
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=expected_invoice))
     api, client = sync_api(transport)
     try:
         result = api.verify_invoice_paid(
@@ -295,9 +322,7 @@ def test_verify_invoice_paid_accepts_new_webhook_envelope() -> None:
 
 def test_get_invoice_from_webhook_supports_intermediate_status() -> None:
     expected_invoice = invoice(status="processing", paid_amount="0")
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, json=expected_invoice)
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=expected_invoice))
     api, client = sync_api(transport)
     try:
         result = api.get_invoice_from_webhook(
@@ -348,9 +373,7 @@ def test_verify_invoice_paid_rejects_unpaid_invoice() -> None:
 
 
 def test_verify_invoice_paid_rejects_callback_mismatch() -> None:
-    transport = httpx.MockTransport(
-        lambda request: httpx.Response(200, json=invoice())
-    )
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json=invoice()))
     api, client = sync_api(transport)
     try:
         with pytest.raises(

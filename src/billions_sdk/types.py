@@ -76,6 +76,65 @@ class CreateInvoiceRequest(EstimateInvoiceFeesRequest, total=False):
     expiresAt: str
 
 
+class CreateWithdrawalRequest(TypedDict):
+    currency: str
+    amount: Amount
+    withdrawalMethodId: int | float
+
+
+class _CreateCryptoRefundRequestRequired(TypedDict):
+    invoiceId: str
+
+
+class CreateCryptoRefundRequest(_CreateCryptoRefundRequestRequired, total=False):
+    reason: str
+    address: str
+    withdrawToSameAddress: bool
+
+
+class _CreateFiatRefundRequestRequired(TypedDict):
+    invoiceId: str
+
+
+class CreateFiatRefundRequest(_CreateFiatRefundRequestRequired, total=False):
+    reason: str
+
+
+class WithdrawalRequestInfo(TypedDict):
+    id: str
+    currency: str
+    amount: str
+    withdrawal_method_id: int | float
+    status: str
+    payout_processor_status: str | None
+    payout_processor_tx_id: str | None
+    created_at: str
+    updated_at: str
+
+
+class RefundRequestInfo(TypedDict):
+    id: str
+    invoice_id: str
+    type: str
+    currency: str
+    amount: str
+    to_address: str | None
+    withdraw_to_same_address: bool
+    status: str
+    payout_processor_status: str | None
+    payout_processor_tx_id: str | None
+    created_at: str
+    updated_at: str
+
+
+class WithdrawalResponse(TypedDict):
+    request: WithdrawalRequestInfo
+
+
+class RefundResponse(TypedDict):
+    request: RefundRequestInfo
+
+
 class InvoiceInfo(TypedDict):
     created_at: str
     updated_at: str

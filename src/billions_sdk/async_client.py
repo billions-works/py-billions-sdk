@@ -16,6 +16,7 @@ from ._shared import (
     normalize_version,
     resolve_callback_arguments,
     resolve_webhook_invoice_id,
+    signed_mutation_headers,
     verify_callback_against_invoice,
     verify_webhook_signature,
 )
@@ -23,14 +24,19 @@ from .constants import BILLIONS_DEFAULT_BASE_URL, BILLIONS_PUBLIC_API_VERSION
 from .errors import BillionsApiError
 from .types import (
     CountryInfo,
+    CreateCryptoRefundRequest,
+    CreateFiatRefundRequest,
     CreateInvoiceRequest,
+    CreateWithdrawalRequest,
     CurrencyInfo,
     EstimateInvoiceFeesRequest,
     EstimateInvoiceFeesResponseWithSummary,
     InvoiceInfo,
     InvoiceWebhookPayload,
     MerchantInfo,
+    RefundResponse,
     VerifyInvoicePaidCallbackData,
+    WithdrawalResponse,
 )
 
 
@@ -44,6 +50,7 @@ class AsyncBillionsApi:
         base_url: str | None = None,
         version: str | None = None,
         webhook_secret: str | None = None,
+        secret_key: str | None = None,
         client: httpx.AsyncClient | None = None,
         timeout: float = 20.0,
     ) -> None:
@@ -52,11 +59,16 @@ class AsyncBillionsApi:
             raise ValueError("api_key is required")
         if webhook_secret == "":
             raise ValueError("webhook_secret must not be empty")
+        if secret_key == "":
+            raise ValueError("secret_key must not be empty")
+        if webhook_secret and secret_key and webhook_secret != secret_key:
+            raise ValueError("secret_key and webhook_secret must match")
 
         self.api_key = normalized_api_key
         self.base_url = normalize_base_url(base_url, BILLIONS_DEFAULT_BASE_URL)
         self.version = normalize_version(version, BILLIONS_PUBLIC_API_VERSION)
-        self.webhook_secret = webhook_secret
+        self.secret_key = secret_key or webhook_secret
+        self.webhook_secret = self.secret_key
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout)
 
@@ -101,6 +113,42 @@ class AsyncBillionsApi:
         return cast(
             InvoiceInfo,
             await self._request("POST", "/invoices/create", payload),
+        )
+
+    async def create_withdrawal(
+        self,
+        payload: CreateWithdrawalRequest,
+        *,
+        request_id: str | None = None,
+        timestamp: int | str | None = None,
+    ) -> WithdrawalResponse:
+        return cast(
+            WithdrawalResponse,
+            await self._signed_mutation("/withdrawals/create", payload, request_id, timestamp),
+        )
+
+    async def refund_crypto(
+        self,
+        payload: CreateCryptoRefundRequest,
+        *,
+        request_id: str | None = None,
+        timestamp: int | str | None = None,
+    ) -> RefundResponse:
+        return cast(
+            RefundResponse,
+            await self._signed_mutation("/refunds/refundCrypto", payload, request_id, timestamp),
+        )
+
+    async def refund_fiat(
+        self,
+        payload: CreateFiatRefundRequest,
+        *,
+        request_id: str | None = None,
+        timestamp: int | str | None = None,
+    ) -> RefundResponse:
+        return cast(
+            RefundResponse,
+            await self._signed_mutation("/refunds/refundFiat", payload, request_id, timestamp),
         )
 
     async def get_invoice(self, invoice_id: str) -> InvoiceInfo:
@@ -158,6 +206,7 @@ class AsyncBillionsApi:
         method: str,
         path: str,
         payload: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Any:
         try:
             response = await self._client.request(
@@ -167,6 +216,7 @@ class AsyncBillionsApi:
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "x-api-key": self.api_key,
+                    **dict(headers or {}),
                 },
                 json=dict(payload) if payload is not None else None,
             )
@@ -180,3 +230,15 @@ class AsyncBillionsApi:
             )
             raise BillionsApiError(message, response.status_code, response_body)
         return response_body
+
+    async def _signed_mutation(
+        self,
+        path: str,
+        payload: Mapping[str, Any],
+        request_id: str | None,
+        timestamp: int | str | None,
+    ) -> Any:
+        headers = signed_mutation_headers(
+            self.secret_key, self.version, path, payload, request_id, timestamp
+        )
+        return await self._request("POST", path, payload, headers)
